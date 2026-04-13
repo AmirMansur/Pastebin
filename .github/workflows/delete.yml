@@ -1,0 +1,28 @@
+name: Delete Old Pastes
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete old issues
+        run: |
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository }}/issues \
+          > issues.json
+
+          python3 <<EOF
+import json, requests, datetime
+
+with open("issues.json") as f:
+    issues = json.load(f)
+
+for issue in issues:
+    created = datetime.datetime.strptime(issue["created_at"], "%Y-%m-%dT%H:%M:%SZ")
+    if (datetime.datetime.utcnow() - created).days > 10:
+        requests.patch(issue["url"], json={"state": "closed"})
+EOF
